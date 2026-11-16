@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { parseHeaders, resolveBaseURL } from "../dist/args.js";
 import { UsageError, validateConfig } from "../dist/config.js";
-import { CLI_PROMO, REPORT_PROMO_URL, shouldShowPromo } from "../dist/promo.js";
+import { CLI_PROMO, INIT_PROMO, REPORT_PROMO_URL, shouldShowPromo } from "../dist/promo.js";
 import { renderReport } from "../dist/report.js";
 import { cleanError, slug } from "../dist/runner.js";
 
@@ -60,6 +60,7 @@ test("a passing run says so and asks for nothing", () => {
 
 test("promo line: on by default, off with --no-promo or NO_PUBLISHUB_PROMO", () => {
   assert.ok(CLI_PROMO.includes("https://getpublishub.com/?utm_source=gh_cli"));
+  assert.ok(INIT_PROMO.includes("https://getpublishub.com/?utm_source=gh_init"));
   assert.equal(shouldShowPromo(false, {}), true);
   assert.equal(shouldShowPromo(true, {}), false);
   assert.equal(shouldShowPromo(false, { NO_PUBLISHUB_PROMO: "1" }), false);

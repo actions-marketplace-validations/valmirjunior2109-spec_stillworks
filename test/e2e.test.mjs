@@ -54,8 +54,10 @@ test("init creates the example config and ignores the report folder", async () =
   for (const file of [".claude/commands/verify.md", ".cursor/rules/stillworks.mdc", ".github/workflows/stillworks.yml"]) {
     assert.ok(existsSync(join(project, file)), file);
   }
-  const again = await cli(["init", "--skip-install"]);
+  assert.match(stdout, /utm_source=gh_init/);
+  const again = await cli(["init", "--skip-install", "--no-promo"]);
   assert.match(again.stdout, /already exists/);
+  assert.doesNotMatch(again.stdout, /getpublishub/);
 });
 
 test("a broken signup fails the run and the report says exactly where", async () => {

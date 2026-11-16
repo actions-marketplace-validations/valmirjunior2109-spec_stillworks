@@ -6,7 +6,7 @@ import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { parseHeaders, resolveBaseURL } from "./args.js";
 import { DEFAULT_CONFIG_FILE, UsageError, loadConfig } from "./config.js";
-import { CLI_PROMO, shouldShowPromo } from "./promo.js";
+import { CLI_PROMO, INIT_PROMO, shouldShowPromo } from "./promo.js";
 import { toReportPath, writeReport } from "./report.js";
 import { runJourneys, type JourneyResult } from "./runner.js";
 import { INTEGRATIONS, PACKAGE_ROOT, init, installBrowser, type Integration } from "./setup.js";
@@ -34,6 +34,7 @@ Options for init
       --claude --cursor --github   also add the Claude Code command, Cursor rule or GitHub Action
       --skip-install               don't download Chromium
       --force                      overwrite files that already exist
+      --no-promo                   hide the one-line Publishub note (or NO_PUBLISHUB_PROMO=1)
 
 Exit codes: 0 every journey passed · 1 a journey failed · 2 usage or setup problem`;
 
@@ -83,6 +84,7 @@ async function main(argv: string[]): Promise<number> {
     const integrations = (Object.keys(INTEGRATIONS) as Integration[]).filter((key) => values[key]);
     await init({ config: values.config, force: values.force, skipInstall: values["skip-install"], integrations });
     console.log(`\nNext:\n  1. Edit ${values.config ?? DEFAULT_CONFIG_FILE} so the selectors match your app.\n  2. npx stillworks run --url http://localhost:3000`);
+    if (shouldShowPromo(values["no-promo"])) console.log(`\n${dim(INIT_PROMO)}`);
     return 0;
   }
 

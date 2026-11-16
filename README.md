@@ -15,6 +15,8 @@ Claude Code, Cursor and Codex write code fast. The code compiles, passes lint an
 </p>
 <!-- To re-record the GIF, see assets/RECORDING.md -->
 
+**Want it to run by itself on every PR, with regression diffs?** [Join Publishub early access →](https://getpublishub.com/?utm_source=gh_readme_top#early-access) (free waitlist, coming soon)
+
 ## Quickstart (30 seconds)
 
 ```sh
@@ -162,7 +164,7 @@ npx stillworks hook claude-code
 ### Privacy and the one promo line
 
 - **No telemetry.** `stillworks` collects nothing and sends nothing anywhere. The only network requests it makes are to the URL you check. Chromium is downloaded by Playwright when you run `install`.
-- At the end of `run`, it prints one line about Publishub: `Want this on every AI change, with regression diffs? → https://getpublishub.com/?utm_source=gh_cli`.
+- At the end of `run`, it prints one line about Publishub: `Want this on every AI change, with regression diffs? → https://getpublishub.com/?utm_source=gh_cli`. `init` prints a similar line once, at the end of setup.
   - Turn it off with `--no-promo` or `NO_PUBLISHUB_PROMO=1`.
   - The Claude Code hook never prints it.
   - `REPORT.md` ends with a one-line footer linking to Publishub.
