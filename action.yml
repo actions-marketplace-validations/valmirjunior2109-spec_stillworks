@@ -4,7 +4,6 @@ author: "Publishub"
 branding:
   icon: check-circle
   color: purple
-
 inputs:
   url:
     description: "The app to check, e.g. a preview deployment URL."
