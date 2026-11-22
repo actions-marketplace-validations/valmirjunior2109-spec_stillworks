@@ -1,5 +1,5 @@
 name: "stillworks: user journey checks"
-description: "Your AI writes the code, this checks it still works: runs signup, login and checkout in a real browser and writes a report your agent can fix."
+description: "Runs signup, login and checkout in a real browser after every change and writes a report your AI agent can fix."
 author: "Publishub"
 branding:
   icon: check-circle
