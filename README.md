@@ -10,6 +10,11 @@ Claude Code, Cursor and Codex write code fast. The code compiles, passes lint an
 
 `stillworks` runs the journeys your users actually click through (signup, login, checkout) in a real browser. When one breaks, it writes a report your coding agent can act on: the step that failed, the console errors, the failed requests with the server's response, and a screenshot.
 
+- **Zero setup:** `npx stillworks check http://localhost:3000` opens your app and its key pages and tells you what's broken, in about 30 seconds.
+- **Your real flows:** signup, login and checkout as plain Playwright steps, or ask your agent to write them.
+- **Your agent can run it:** `npx stillworks mcp` is an MCP server for Claude Code, Cursor and any MCP client.
+- **Free and open source,** MIT, no telemetry.
+
 <p align="center">
   <img src="assets/demo.gif" alt="stillworks running three journeys in the terminal: signup fails at step 4 with POST /api/signup returning 500, login and checkout pass" width="760">
 </p>
@@ -252,6 +257,8 @@ To see `check` catch a missing page, a JavaScript crash and a 500 with no setup:
 ## Contributing
 
 Bug reports, journey templates for common stacks (Next.js + Supabase auth, Clerk, Stripe Checkout…) and integrations for more agents are all welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). Want a journey you don't know how to write? [Open a journey request](https://github.com/valmirjunior2109-spec/stillworks/issues/new?template=journey_request.yml).
+
+If stillworks caught a bug for you, a ⭐ on the repo helps other people building with AI find it.
 
 ## License
 
