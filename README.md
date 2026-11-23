@@ -144,6 +144,17 @@ More in [recipes/](recipes/README.md).
 - `npx stillworks init --claude` adds a `/verify` command: Claude runs the journeys, reads the report, fixes the bug and runs them again.
 - To check automatically every time Claude finishes, add the [Stop hook](integrations/claude-code/README.md). It skips turns where no file changed and never blocks Claude when the app isn't running.
 
+**As an MCP server (Claude Code, Cursor, Windsurf, any MCP client):** your agent gets two tools, `check_app` (zero setup, read-only) and `run_journeys` (your `journeys.config.ts`), and calls them itself after a change.
+
+- Claude Code: `claude mcp add stillworks -- npx -y stillworks mcp`
+- Cursor: add to `.cursor/mcp.json`:
+
+  ```json
+  { "mcpServers": { "stillworks": { "command": "npx", "args": ["-y", "stillworks", "mcp"] } } }
+  ```
+
+Run `npx stillworks install` once first, so the browser is there.
+
 **Cursor:** `npx stillworks init --cursor` adds a [rule](integrations/cursor/rules/stillworks.mdc) that tells the agent to verify after every change.
 
 **Codex, GitHub Copilot, Windsurf:** paste [this section](integrations/agents-md/AGENTS.md) into your `AGENTS.md`.
@@ -209,6 +220,7 @@ npx stillworks run [--url <url>] [--config <file>] [--out <dir>] [--journey <nam
                    [--headed] [--no-promo]
 npx stillworks install [--with-deps]
 npx stillworks hook claude-code
+npx stillworks mcp
 ```
 
 - **Exit codes:** `0` every journey (or page) passed · `1` one failed · `2` setup problem (no config, app not reachable, unknown journey).
