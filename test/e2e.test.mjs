@@ -201,3 +201,42 @@ test("check: a missing page, a JavaScript crash and a 500 from the API fail it, 
   assert.match(report, /POST \/api\/plan → 500/);
   assert.match(report, /npx stillworks check /);
 });
+
+test("mcp: an agent lists the tools and runs check_app over stdio", async () => {
+  const child = spawn(process.execPath, [CLI, "mcp"], { cwd: project, env: { ...process.env, NO_COLOR: "1" } });
+  const replies = new Map();
+  let buffer = "";
+  child.stdout.on("data", (chunk) => {
+    buffer += chunk;
+    for (let at = buffer.indexOf("\n"); at > -1; at = buffer.indexOf("\n")) {
+      const message = JSON.parse(buffer.slice(0, at));
+      buffer = buffer.slice(at + 1);
+      replies.set(message.id, message);
+    }
+  });
+  const send = (message) => child.stdin.write(`${JSON.stringify(message)}\n`);
+  const waitFor = async (id) => {
+    for (let i = 0; i < 600 && !replies.has(id); i++) await new Promise((r) => setTimeout(r, 100));
+    return replies.get(id);
+  };
+  try {
+    send({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "test", version: "1" } } });
+    send({ jsonrpc: "2.0", method: "notifications/initialized" });
+    send({ jsonrpc: "2.0", id: 2, method: "tools/list" });
+    send({ jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "check_app", arguments: { url: brokenPages } } });
+    send({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "check_app", arguments: { url: "http://127.0.0.1:9" } } });
+
+    assert.equal((await waitFor(1)).result.serverInfo.name, "stillworks");
+    assert.deepEqual((await waitFor(2)).result.tools.map((t) => t.name), ["check_app", "run_journeys"]);
+    const check = (await waitFor(3)).result;
+    assert.ok(!check.isError);
+    assert.match(check.content[0].text, /3 of 6 pages failed/);
+    assert.match(check.content[0].text, /POST \/api\/plan → 500/);
+    const unreachable = (await waitFor(4)).result;
+    assert.equal(unreachable.isError, true);
+    assert.match(unreachable.content[0].text, /Couldn't reach/);
+  } finally {
+    child.stdin.end();
+    child.kill();
+  }
+});

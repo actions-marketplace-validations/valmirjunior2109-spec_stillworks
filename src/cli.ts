@@ -9,6 +9,7 @@ import { DEFAULT_CONFIG_FILE, UsageError, isExampleConfig, loadConfig } from "./
 import { CLI_PROMO, INIT_PROMO, shouldShowPromo } from "./promo.js";
 import { looksLikeJourneyProblem, toReportPath, writeReport } from "./report.js";
 import { runJourneys, type JourneyResult } from "./runner.js";
+import { serveMcp } from "./mcp.js";
 import { MAX_EXTRA_PAGES, discover, pickPages, smokeConfig } from "./smoke.js";
 import { INTEGRATIONS, PACKAGE_ROOT, init, installBrowser, nextSteps, type Integration } from "./setup.js";
 
@@ -20,6 +21,7 @@ Usage
   npx stillworks run --url <url>                         run every journey in a real browser
   npx stillworks install [--with-deps]                   install (or update) Chromium
   npx stillworks hook claude-code                        for a Claude Code Stop hook (see README)
+  npx stillworks mcp                                     an MCP server: your agent calls check_app / run_journeys itself
 
 Options for run
   -u, --url <url>         the app to check (or STILLWORKS_URL, or baseURL in the config)
@@ -93,6 +95,8 @@ async function main(argv: string[]): Promise<number> {
     if (shouldShowPromo(values["no-promo"])) console.log(`\n${dim(INIT_PROMO)}`);
     return 0;
   }
+
+  if (command === "mcp") return serveMcp();
 
   if (command === "install") {
     await installBrowser({ withDeps: values["with-deps"] });

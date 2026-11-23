@@ -2,6 +2,12 @@
 
 All notable changes to stillworks. Versions follow [semver](https://semver.org/); every version is on [npm](https://www.npmjs.com/package/stillworks).
 
+## 0.1.5 (2026-11-23)
+
+### Added
+
+- **`npx stillworks mcp`: an MCP server.** Claude Code, Cursor and other MCP clients get two tools, `check_app` (zero setup, read-only) and `run_journeys` (your journeys), and call them after a change. They return the same `REPORT.md`. Setup problems (app not running, no config) come back as tool errors the agent can act on.
+
 ## 0.1.4 (2026-11-23)
 
 ### Added
