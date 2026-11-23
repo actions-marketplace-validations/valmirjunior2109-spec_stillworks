@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const CLI = join(ROOT, "dist", "cli.js");
 const servers = [];
-let project, healthy, broken, unsaved;
+let project, healthy, broken, unsaved, brokenPages;
 
 function startDemo(...args) {
   return new Promise((resolve, reject) => {
@@ -37,7 +37,7 @@ function cli(args, { env = {}, input } = {}) {
 }
 
 before(async () => {
-  [healthy, broken, unsaved] = await Promise.all([startDemo(), startDemo("--break=signup"), startDemo("--break=save")]);
+  [healthy, broken, unsaved, brokenPages] = await Promise.all([startDemo(), startDemo("--break=signup"), startDemo("--break=save"), startDemo("--break=pages")]);
   project = mkdtempSync(join(tmpdir(), "stillworks-e2e-"));
 });
 
@@ -165,4 +165,39 @@ test("recipes run as written: read-the-data-back catches a save that never happe
   const login = await cli(["run", "--url", healthy, "--config", join(ROOT, "recipes", "login-with-test-account.ts"), "--no-promo"]);
   assert.equal(login.code, 0, login.stdout + login.stderr);
   assert.match(login.stdout, /✓ login/);
+});
+
+test("check: zero setup, read-only, finds the pages and passes a healthy app", async () => {
+  const empty = mkdtempSync(join(tmpdir(), "stillworks-check-"));
+  try {
+    const result = await new Promise((resolve) => {
+      const child = spawn(process.execPath, [CLI, "check", healthy, "--no-promo"], { cwd: empty, env: { ...process.env, NO_COLOR: "1" } });
+      let stdout = "";
+      child.stdout.on("data", (c) => (stdout += c));
+      child.on("close", (code) => resolve({ code, stdout }));
+    });
+    assert.equal(result.code, 0, result.stdout);
+    assert.match(result.stdout, /5 pages: \/  \/signup  \/login  \/checkout  \/notes/);
+    assert.match(result.stdout, /All 5 pages look fine/);
+    assert.match(result.stdout, /npx stillworks init/);
+    assert.ok(existsSync(join(empty, "verify-report", "REPORT.md")), "writes the same report as run");
+    assert.doesNotMatch(readFileSync(join(empty, "verify-report", "REPORT.md"), "utf8"), /tested%20with-stillworks/, "no badge for a first look");
+    assert.ok(!existsSync(join(empty, "journeys.config.ts")), "needs no config and creates none");
+  } finally {
+    rmSync(empty, { recursive: true, force: true });
+  }
+});
+
+test("check: a missing page, a JavaScript crash and a 500 from the API fail it, with a report for the agent", async () => {
+  const result = await cli(["check", brokenPages, "--no-promo"]);
+  assert.equal(result.code, 1, result.stdout);
+  assert.match(result.stdout, /\/docs .*failed at step 1\/4: "Open \/docs"/);
+  assert.match(result.stdout, /\/notes .*failed at step 3\/4: "No JavaScript crash"/);
+  assert.match(result.stdout, /\/checkout .*failed at step 4\/4: "No server errors from your app"/);
+  assert.match(result.stdout, /3 of 6 pages have a problem/);
+  const report = readFileSync(join(project, "verify-report", "REPORT.md"), "utf8");
+  assert.match(report, /The server answered 404/);
+  assert.match(report, /Cannot read properties of undefined \(reading 'mount'\)/);
+  assert.match(report, /POST \/api\/plan → 500/);
+  assert.match(report, /npx stillworks check /);
 });

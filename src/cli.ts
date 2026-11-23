@@ -9,11 +9,13 @@ import { DEFAULT_CONFIG_FILE, UsageError, isExampleConfig, loadConfig } from "./
 import { CLI_PROMO, INIT_PROMO, shouldShowPromo } from "./promo.js";
 import { looksLikeJourneyProblem, toReportPath, writeReport } from "./report.js";
 import { runJourneys, type JourneyResult } from "./runner.js";
+import { MAX_EXTRA_PAGES, discover, pickPages, smokeConfig } from "./smoke.js";
 import { INTEGRATIONS, PACKAGE_ROOT, init, installBrowser, nextSteps, type Integration } from "./setup.js";
 
 const HELP = `stillworks: your AI writes the code, this checks it still works.
 
 Usage
+  npx stillworks check <url>                             zero setup: open your app and its key pages, read-only
   npx stillworks init [--claude] [--cursor] [--github]   create journeys.config.ts and install Chromium
   npx stillworks run --url <url>                         run every journey in a real browser
   npx stillworks install [--with-deps]                   install (or update) Chromium
@@ -29,6 +31,10 @@ Options for run
       --channel <name>    use an installed browser instead: chrome or msedge
       --headed            show the browser
       --no-promo          hide the one-line Publishub note (or NO_PUBLISHUB_PROMO=1)
+
+Options for check
+  -o, --out <dir>, -H, --header, --timeout, --channel, --headed, --no-promo   same as run
+  check only opens pages: it never fills a form, clicks a button or opens links like "log out"
 
 Options for init
       --claude --cursor --github   also add the Claude Code command, Cursor rule or GitHub Action
@@ -104,6 +110,14 @@ async function main(argv: string[]): Promise<number> {
     headed: values.headed,
     promo: shouldShowPromo(values["no-promo"]),
   };
+
+  if (command === "check") {
+    const target = rest[0] ?? values.url;
+    if (!target) throw new UsageError("Which app should I check? Run: npx stillworks check https://your-app.com (or http://localhost:3000)");
+    const outcome = await quickCheck(target, run);
+    if (shouldShowPromo(values["no-promo"])) console.log(`\n${dim(CLI_PROMO)}`);
+    return outcome.failed ? 1 : 0;
+  }
 
   if (command === "run") {
     const outcome = await check(run, { quiet: false });
@@ -185,6 +199,60 @@ async function check(input: CheckInput, { quiet }: { quiet: boolean }) {
     print(dim(`Report and screenshots: ${report}`));
   }
   return { result, failed, report: paths.markdown };
+}
+
+/**
+ * `check <url>`: no config. Opens the URL, picks the key pages linked from it, and runs a read-only journey for
+ * each one (the page loads, isn't an error screen, no JavaScript crash, no 5xx from your app). Same report.
+ */
+async function quickCheck(target: string, input: CheckInput) {
+  const url = resolveBaseURL(target, {});
+  await assertReachable(url, "the URL you passed");
+  console.log(`${bold("stillworks check")} ${dim("·")} ${url} ${dim("· read-only, nothing is clicked or submitted")}\n`);
+  console.log(dim(`  … finding your app's key pages`));
+
+  const { finalURL, links } = await discover(url, { channel: input.channel, headed: input.headed, headers: input.headers, timeout: input.timeout });
+  const startPath = `${finalURL.pathname}${finalURL.search}` || "/";
+  const pages = pickPages(links, finalURL, MAX_EXTRA_PAGES);
+  const config = smokeConfig(startPath, pages, input.timeout);
+  if (process.stdout.isTTY) process.stdout.write("\u001b[1A\r\u001b[2K");
+  console.log(dim(`  ${pages.length ? `${1 + pages.length} pages: ${[startPath, ...pages].join("  ")}` : `1 page: ${startPath} (no other pages linked from it)`}\n`));
+
+  const width = Math.max(...config.journeys.map((j) => j.name.length));
+  const live = Boolean(process.stdout.isTTY);
+  const result = await runJourneys(config, {
+    baseURL: finalURL.origin,
+    outDir: input.outDir,
+    headers: input.headers,
+    timeout: input.timeout,
+    channel: input.channel,
+    headed: input.headed,
+    onJourneyStart: (journey) => {
+      if (live) process.stdout.write(dim(`  … ${journey.name}`));
+    },
+    onJourneyEnd: (journey) => {
+      if (live) process.stdout.write("\r\u001b[2K");
+      for (const line of journeyLines(journey, width)) console.log(line);
+    },
+  });
+
+  const rerun = ["npx stillworks check", url, input.outDir !== "verify-report" ? `--out ${input.outDir}` : ""].filter(Boolean).join(" ");
+  // the badge says "tested with stillworks": only for real journeys, not for this first look
+  const paths = writeReport(result, input.outDir, { rerun, badge: false });
+  const failed = result.journeys.filter((j) => j.status === "failed").length;
+  const ran = result.journeys.length;
+  const report = toReportPath(paths.markdown, process.cwd());
+
+  console.log("");
+  if (failed) {
+    console.log(`${red(bold(`${failed} of ${ran} ${ran === 1 ? "page has" : "pages have"} a problem`))} ${dim(`· ${(result.durationMs / 1000).toFixed(1)}s`)}`);
+    console.log(`Paste this into your agent: ${bold(report)}`);
+  } else {
+    console.log(`${green(bold(`All ${ran} ${ran === 1 ? "page" : "pages"} look fine`))} ${dim(`· ${(result.durationMs / 1000).toFixed(1)}s`)}`);
+    console.log(dim(`Report and screenshots: ${report}`));
+  }
+  console.log(`\nThis looked at pages only. To check the flows behind them (signup, login, checkout): ${bold("npx stillworks init")}`);
+  return { failed };
 }
 
 function journeyLines(journey: JourneyResult, width: number): string[] {
