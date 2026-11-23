@@ -2,6 +2,10 @@
 
 All notable changes to stillworks. Versions follow [semver](https://semver.org/); every version is on [npm](https://www.npmjs.com/package/stillworks).
 
+## 0.1.6
+
+- MCP Registry metadata: `mcpName` in `package.json` and `server.json`, so stillworks can be listed in the official MCP Registry (`io.github.valmirjunior2109-spec/stillworks`). No changes to the CLI.
+
 ## 0.1.5 (2026-11-23)
 
 ### Added
