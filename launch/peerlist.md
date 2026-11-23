@@ -19,6 +19,7 @@ AI coding agents like Claude Code, Cursor and Codex write code fast. The code co
 
 stillworks is a free, open-source CLI that runs your critical user journeys (signup, login, checkout) in a real browser:
 
+- `npx stillworks check <url>` gives a first look with zero setup: key pages, 404s, JavaScript crashes, failed API calls (read-only)
 - `npx stillworks init` creates editable example journeys and installs Chromium
 - `npx stillworks run --url http://localhost:3000` runs every journey, screenshots each step, and captures console errors and failed requests
 - When something breaks, it writes `REPORT.md` as a prompt your agent can act on: the step that failed, the server's response, the screenshot, and "fix this without changing unrelated files"

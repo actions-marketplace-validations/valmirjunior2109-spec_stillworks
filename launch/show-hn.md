@@ -19,7 +19,8 @@ Hi HN. A common failure with Claude Code and Cursor: the change compiles, lint a
 
 stillworks is a small CLI around Playwright that does the clicking:
 
-- `npx stillworks init` writes a journeys.config.ts with editable signup/login/checkout examples
+- `npx stillworks check https://your-app.com` needs no setup: it opens your app and the key pages linked from it, read-only, and fails on 404s (including SPA "not found" screens), JavaScript crashes and 5xx from your API. It never fills a form or clicks a button
+- `npx stillworks init` writes a journeys.config.ts with editable signup/login/checkout examples (and prints a prompt so your agent can write them)
 - `npx stillworks run --url http://localhost:3000` runs each journey in Chromium, screenshots every step, and records console errors and failed requests (with the start of the response body for your own origin)
 - it exits 1 when something breaks and writes REPORT.md as a prompt you paste back into the agent: which step failed, the 500 and its error message, the screenshot, and "fix this without changing unrelated files"
 

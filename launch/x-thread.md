@@ -9,9 +9,9 @@ Each post is under 280 characters (links count as 23).
 
 Your AI writes the code. Who checks it still works?
 
-I just open-sourced stillworks: one command runs signup, login and checkout in a real browser and tells your agent exactly what broke.
+I just open-sourced stillworks: one command opens your app in a real browser, no setup, and tells your agent exactly what broke.
 
-npx stillworks init
+npx stillworks check your-app.com
 
 🧵
 

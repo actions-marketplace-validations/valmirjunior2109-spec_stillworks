@@ -19,6 +19,15 @@ So I built stillworks, an open-source CLI that runs your critical user journeys 
 
 The most useful part is the Stop hook: when Claude finishes, the journeys run. If one fails, the report goes straight back to Claude and it keeps working until it passes. It skips turns where no file changed, so chat-only turns cost nothing.
 
+Try it in 30 seconds, no setup (read-only: it opens pages, never submits anything):
+
+```
+npx stillworks install
+npx stillworks check http://localhost:3000
+```
+
+Then, for the real flows and the Stop hook:
+
 ```
 npx stillworks init --claude
 npx stillworks run --url http://localhost:3000
@@ -38,7 +47,9 @@ Curious what flows you'd want checked first.
 
 Cursor's agent is fast, but "tests pass" doesn't mean the signup button still works. I built an open-source CLI, stillworks, that runs signup/login/checkout in Chromium and writes a fix-ready report when something breaks.
 
-`npx stillworks init --cursor` adds a rule that tells the agent to run it after every change, read `verify-report/REPORT.md` if it fails, fix the root cause without touching unrelated files, and re-run.
+Try it with no setup first: `npx stillworks check http://localhost:3000` opens your app and its key pages and reports 404s, JavaScript crashes and failed API calls.
+
+Then `npx stillworks init --cursor` adds a rule that tells the agent to run it after every change, read `verify-report/REPORT.md` if it fails, fix the root cause without touching unrelated files, and re-run.
 
 Repo (MIT): https://github.com/valmirjunior2109-spec/stillworks
 
@@ -52,7 +63,7 @@ Repo (MIT): https://github.com/valmirjunior2109-spec/stillworks
 
 Founder here, building with Claude Code. The scary AI bugs aren't the ones tests catch. They're "signup silently does nothing" after an innocent-looking refactor.
 
-stillworks runs your critical journeys (signup, login, checkout) in a real browser after each change and gives your agent a report it can fix from. It's free, MIT, and takes 30 seconds to try on the bundled demo app with a broken signup.
+stillworks runs your critical journeys (signup, login, checkout) in a real browser after each change and gives your agent a report it can fix from. It's free, MIT, and takes 30 seconds to try with no setup: `npx stillworks check https://your-app.com` opens your app and its key pages (read-only) and tells you what's broken.
 
 https://github.com/valmirjunior2109-spec/stillworks
 
