@@ -6,6 +6,9 @@
 //   node examples/demo-app/server.mjs --break=save    the notes API answers 200 but stores nothing, like a
 //                                                     Supabase insert blocked by row-level security whose
 //                                                     error the code never reads. The "Saved" toast still shows.
+//   node examples/demo-app/server.mjs --break=pages   what `stillworks check` finds with no setup: a "Docs" link to a page
+//                                                     that doesn't exist, a JavaScript crash on /notes and a 500
+//                                                     from the API /checkout calls when it loads.
 // PORT=4173 by default; PORT=0 picks a free port. Prints "demo app ready on <url>" when listening.
 import { createServer } from "node:http";
 
@@ -44,14 +47,19 @@ const form = (id, title, fields, button, endpoint, onSuccess) => page(title, `
 </script>`);
 
 const routes = {
-  "GET /": () => page("Home", `<h1>Demo SaaS</h1><nav><a href="/signup">Sign up</a><a href="/login">Log in</a><a href="/checkout">Pricing</a><a href="/notes">Notes</a></nav>
+  "GET /": () => page("Home", `<h1>Demo SaaS</h1><nav><a href="/signup">Sign up</a><a href="/login">Log in</a><a href="/checkout">Pricing</a><a href="/notes">Notes</a>${broken.has("pages") ? `<a href="/docs">Docs</a>` : ""}</nav>
     <p class="note">A demo app for stillworks. Start it with --break=signup to see a broken journey.</p>`),
   "GET /signup": () => form("signup", "Create your account", [["Email", "email", "email"], ["Password", "password", "password"]], "Create account", "/api/signup",
     "`<h1>Welcome, ${json.email}!</h1><p class='note'>Your account is ready.</p>`"),
   "GET /login": () => form("login", "Log in", [["Email", "email", "email"], ["Password", "password", "password"]], "Log in", "/api/login",
     "`<h1>Dashboard</h1><p class='note'>Signed in as ${json.email}.</p>`"),
-  "GET /checkout": () => form("checkout", "Pro plan · $19/month", [["Card number", "card", "text"]], "Pay $19", "/api/checkout",
-    "`<h1>Payment successful</h1><p class='note'>Receipt ${json.receipt}.</p>`"),
+  "GET /checkout": () =>
+    form("checkout", "Pro plan · $19/month", [["Card number", "card", "text"]], "Pay $19", "/api/checkout",
+      "`<h1>Payment successful</h1><p class='note'>Receipt ${json.receipt}.</p>`").replace(
+      "</body>",
+      // the page asks the API for the plan when it loads (a 500 with --break=pages)
+      `<script>fetch("/api/plan", { method: "POST" });</script></body>`,
+    ),
   "GET /notes": () => page("Notes", `<h1>Notes</h1>
 <form id="notes-form">
   <label for="text">Note</label><input id="text" name="text" type="text" required>
@@ -59,6 +67,7 @@ const routes = {
 </form>
 <p id="status" class="note" role="status"></p>
 <ul id="notes">${notes.map((n) => `<li>${escapeHtml(n)}</li>`).join("")}</ul>
+${broken.has("pages") ? "<script>window.editor.mount('#notes');</script>" : ""}
 <script>
   document.getElementById("notes-form").addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -68,6 +77,10 @@ const routes = {
     if (res.ok) document.getElementById("status").textContent = "Saved!";
   });
 </script>`),
+  "POST /api/plan": () => {
+    if (broken.has("pages")) throw new TypeError("Cannot read properties of undefined (reading 'price')");
+    return [200, { plan: "pro", price: 19 }];
+  },
   "POST /api/notes": (body) => {
     // The bug: the write is rejected (think row-level security), but the handler still answers 200.
     if (!broken.has("save")) notes.push(String(body.text ?? ""));
