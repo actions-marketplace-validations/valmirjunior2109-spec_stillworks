@@ -28,3 +28,22 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm publish --access public
+      # Official MCP Registry (io.github.valmirjunior2109-spec/stillworks). Logs in with this workflow's
+      # GitHub OIDC token, so no secret is stored. The registry checks that the npm package's "mcpName"
+      # matches server.json, so wait until the version just published is visible on npm.
+      - name: Wait for the new version on npm
+        run: |
+          for i in $(seq 1 30); do
+            npm view "stillworks@$(node -p 'require("./package.json").version')" version && exit 0
+            sleep 10
+          done
+          exit 1
+      - name: Check server.json matches package.json
+        run: |
+          v=$(node -p 'require("./package.json").version')
+          test "$(node -p 'require("./server.json").version')" = "$v"
+          test "$(node -p 'require("./server.json").packages[0].version')" = "$v"
+      - name: Install mcp-publisher
+        run: curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+      - run: ./mcp-publisher login github-oidc
+      - run: ./mcp-publisher publish
