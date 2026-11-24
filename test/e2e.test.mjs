@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const CLI = join(ROOT, "dist", "cli.js");
 const servers = [];
-let project, healthy, broken, unsaved;
+let project, healthy, broken, unsaved, brokenPages;
 
 function startDemo(...args) {
   return new Promise((resolve, reject) => {
@@ -37,7 +37,7 @@ function cli(args, { env = {}, input } = {}) {
 }
 
 before(async () => {
-  [healthy, broken, unsaved] = await Promise.all([startDemo(), startDemo("--break=signup"), startDemo("--break=save")]);
+  [healthy, broken, unsaved, brokenPages] = await Promise.all([startDemo(), startDemo("--break=signup"), startDemo("--break=save"), startDemo("--break=pages")]);
   project = mkdtempSync(join(tmpdir(), "stillworks-e2e-"));
 });
 
@@ -165,4 +165,78 @@ test("recipes run as written: read-the-data-back catches a save that never happe
   const login = await cli(["run", "--url", healthy, "--config", join(ROOT, "recipes", "login-with-test-account.ts"), "--no-promo"]);
   assert.equal(login.code, 0, login.stdout + login.stderr);
   assert.match(login.stdout, /✓ login/);
+});
+
+test("check: zero setup, read-only, finds the pages and passes a healthy app", async () => {
+  const empty = mkdtempSync(join(tmpdir(), "stillworks-check-"));
+  try {
+    const result = await new Promise((resolve) => {
+      const child = spawn(process.execPath, [CLI, "check", healthy, "--no-promo"], { cwd: empty, env: { ...process.env, NO_COLOR: "1" } });
+      let stdout = "";
+      child.stdout.on("data", (c) => (stdout += c));
+      child.on("close", (code) => resolve({ code, stdout }));
+    });
+    assert.equal(result.code, 0, result.stdout);
+    assert.match(result.stdout, /5 pages: \/  \/signup  \/login  \/checkout  \/notes/);
+    assert.match(result.stdout, /All 5 pages look fine/);
+    assert.match(result.stdout, /npx stillworks init/);
+    assert.ok(existsSync(join(empty, "verify-report", "REPORT.md")), "writes the same report as run");
+    assert.doesNotMatch(readFileSync(join(empty, "verify-report", "REPORT.md"), "utf8"), /tested%20with-stillworks/, "no badge for a first look");
+    assert.ok(!existsSync(join(empty, "journeys.config.ts")), "needs no config and creates none");
+  } finally {
+    rmSync(empty, { recursive: true, force: true });
+  }
+});
+
+test("check: a missing page, a JavaScript crash and a 500 from the API fail it, with a report for the agent", async () => {
+  const result = await cli(["check", brokenPages, "--no-promo"]);
+  assert.equal(result.code, 1, result.stdout);
+  assert.match(result.stdout, /\/docs .*failed at step 1\/4: "Open \/docs"/);
+  assert.match(result.stdout, /\/notes .*failed at step 3\/4: "No JavaScript crash"/);
+  assert.match(result.stdout, /\/checkout .*failed at step 4\/4: "No server errors from your app"/);
+  assert.match(result.stdout, /3 of 6 pages have a problem/);
+  const report = readFileSync(join(project, "verify-report", "REPORT.md"), "utf8");
+  assert.match(report, /The server answered 404/);
+  assert.match(report, /Cannot read properties of undefined \(reading 'mount'\)/);
+  assert.match(report, /POST \/api\/plan → 500/);
+  assert.match(report, /npx stillworks check /);
+});
+
+test("mcp: an agent lists the tools and runs check_app over stdio", async () => {
+  const child = spawn(process.execPath, [CLI, "mcp"], { cwd: project, env: { ...process.env, NO_COLOR: "1" } });
+  const replies = new Map();
+  let buffer = "";
+  child.stdout.on("data", (chunk) => {
+    buffer += chunk;
+    for (let at = buffer.indexOf("\n"); at > -1; at = buffer.indexOf("\n")) {
+      const message = JSON.parse(buffer.slice(0, at));
+      buffer = buffer.slice(at + 1);
+      replies.set(message.id, message);
+    }
+  });
+  const send = (message) => child.stdin.write(`${JSON.stringify(message)}\n`);
+  const waitFor = async (id) => {
+    for (let i = 0; i < 600 && !replies.has(id); i++) await new Promise((r) => setTimeout(r, 100));
+    return replies.get(id);
+  };
+  try {
+    send({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "test", version: "1" } } });
+    send({ jsonrpc: "2.0", method: "notifications/initialized" });
+    send({ jsonrpc: "2.0", id: 2, method: "tools/list" });
+    send({ jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "check_app", arguments: { url: brokenPages } } });
+    send({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "check_app", arguments: { url: "http://127.0.0.1:9" } } });
+
+    assert.equal((await waitFor(1)).result.serverInfo.name, "stillworks");
+    assert.deepEqual((await waitFor(2)).result.tools.map((t) => t.name), ["check_app", "run_journeys"]);
+    const check = (await waitFor(3)).result;
+    assert.ok(!check.isError);
+    assert.match(check.content[0].text, /3 of 6 pages failed/);
+    assert.match(check.content[0].text, /POST \/api\/plan → 500/);
+    const unreachable = (await waitFor(4)).result;
+    assert.equal(unreachable.isError, true);
+    assert.match(unreachable.content[0].text, /Couldn't reach/);
+  } finally {
+    child.stdin.end();
+    child.kill();
+  }
 });

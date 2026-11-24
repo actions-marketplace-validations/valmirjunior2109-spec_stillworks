@@ -9,6 +9,7 @@ import { addDevCommand, hasLocalPackage, nextSteps } from "../dist/setup.js";
 import { CLI_PROMO, INIT_PROMO, REPORT_PROMO_URL, shouldShowPromo } from "../dist/promo.js";
 import { BADGE_MARKDOWN, looksLikeJourneyProblem, renderReport } from "../dist/report.js";
 import { cleanError, slug } from "../dist/runner.js";
+import { looksLikeErrorScreen, pickPages, smokeConfig } from "../dist/smoke.js";
 
 const cwd = process.cwd();
 const failedRun = {
@@ -189,4 +190,44 @@ test("syntax errors in the config name the line, on Linux and on Windows", () =>
   assert.match(windows, /^journeys\.config\.ts has a syntax error at line 24, column 4 \(Unexpected token\)\./);
   assert.doesNotMatch(windows, /C:/);
   assert.equal(loadErrorMessage("journeys.config.ts", "Cannot find module 'x'"), "Couldn't load journeys.config.ts: Cannot find module 'x'");
+});
+
+test("check picks same-origin pages, key ones first, and never links that change data", () => {
+  const start = new URL("https://app.example.com/");
+  const links = [
+    { path: "https://app.example.com/blog", text: "Blog" },
+    { path: "https://app.example.com/pricing", text: "Pricing" },
+    { path: "https://app.example.com/logout", text: "Log out" },
+    { path: "https://app.example.com/settings/delete-account", text: "Delete account" },
+    { path: "https://other.example.com/signup", text: "Sign up elsewhere" },
+    { path: "https://app.example.com/#features", text: "Features" },
+    { path: "https://app.example.com/auth", text: "Sign in" },
+    { path: "https://app.example.com/pricing", text: "Pricing again" },
+    { path: "https://app.example.com/terms.pdf", text: "Terms" },
+    { path: "mailto:hi@example.com", text: "Email" },
+  ];
+  assert.deepEqual(pickPages(links, start, 6), ["/pricing", "/auth", "/blog"]);
+  assert.deepEqual(pickPages(links, start, 1), ["/pricing"]);
+});
+
+test("check spots SPA not-found screens and blank pages, not normal ones", () => {
+  assert.match(looksLikeErrorScreen("My app", "404", "404 Oops! Page not found"), /not found/);
+  assert.match(looksLikeErrorScreen("Page Not Found", "", "Go home"), /not found/);
+  assert.match(looksLikeErrorScreen("My app", "", "   "), /blank/);
+  assert.equal(looksLikeErrorScreen("Pricing · My app", "Simple pricing", "Pro plan $19/month"), undefined);
+});
+
+test("check builds one read-only journey per page", () => {
+  const config = smokeConfig("/", ["/pricing", "/auth"], 5000);
+  assert.deepEqual(config.journeys.map((j) => j.name), ["home", "/pricing", "/auth"]);
+  assert.deepEqual(config.journeys[1].steps.map((s) => s.name), ["Open /pricing", "Show the page, not an error screen", "No JavaScript crash", "No server errors from your app"]);
+  assert.equal(config.timeout, 5000);
+  assert.equal(smokeConfig("/app", []).journeys[0].name, "/app");
+});
+
+test("init suggests a prompt so the agent writes the journeys", () => {
+  const text = nextSteps("journeys.config.ts", "linux");
+  assert.match(text, /Paste this/);
+  assert.match(text, /Read journeys\.config\.ts and my app's routes/);
+  assert.match(text, /npx stillworks check/);
 });

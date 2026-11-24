@@ -124,11 +124,23 @@ export async function installBrowser({ withDeps = false, cwd = process.cwd() }: 
 }
 
 /** What to do after init. On Windows, PowerShell often blocks npx.ps1, and npx.cmd always works. */
+/** The prompt `init` suggests, so the agent writes the journeys instead of you. */
+export const AGENT_PROMPT = (configFile: string) =>
+  `"Read ${configFile} and my app's routes and forms. Rewrite the journeys so they match my app: ` +
+  `signup, login and the one flow my users can't live without. Use getByRole and getByLabel, read test credentials ` +
+  `with env(), and run npx stillworks run until every journey passes without changing the app."`;
+
 export function nextSteps(configFile: string, platform: NodeJS.Platform = process.platform): string {
   const lines = [
     "Next:",
     `  1. Edit ${configFile}: set baseURL and change the example journeys so they match your app.`,
+    "     Or let your coding agent do it. Paste this:",
+    "",
+    `     ${AGENT_PROMPT(configFile)}`,
+    "",
     "  2. npx stillworks run --url http://localhost:3000",
+    "",
+    "Just want a first look, with no setup? npx stillworks check http://localhost:3000",
   ];
   if (platform === "win32") lines.push("", 'Windows PowerShell says "running scripts is disabled"? Use npx.cmd instead of npx.');
   return lines.join("\n");

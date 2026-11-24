@@ -1,0 +1,27 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.valmirjunior2109-spec/stillworks",
+  "description": "Checks your web app still works after AI edits: real browser, zero setup, fix-ready report.",
+  "repository": {
+    "url": "https://github.com/valmirjunior2109-spec/stillworks",
+    "source": "github"
+  },
+  "version": "0.1.5",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "stillworks",
+      "version": "0.1.5",
+      "runtimeHint": "npx",
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp"
+        }
+      ],
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

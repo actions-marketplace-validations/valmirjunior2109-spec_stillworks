@@ -1,6 +1,7 @@
 {
   "name": "stillworks",
-  "version": "0.1.3",
+  "version": "0.1.5",
+  "mcpName": "io.github.valmirjunior2109-spec/stillworks",
   "description": "Your AI writes the code. This checks it still works. Run your critical user journeys (signup, login, checkout) in a real browser and get a bug report your coding agent can fix.",
   "keywords": [
     "playwright",
@@ -11,7 +12,13 @@
     "vibe-coding",
     "regression-testing",
     "developer-tools",
-    "cli"
+    "cli",
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "smoke-test",
+    "lovable",
+    "bolt"
   ],
   "license": "MIT",
   "author": "Publishub (https://getpublishub.com)",

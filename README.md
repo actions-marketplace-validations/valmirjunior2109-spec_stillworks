@@ -10,6 +10,11 @@ Claude Code, Cursor and Codex write code fast. The code compiles, passes lint an
 
 `stillworks` runs the journeys your users actually click through (signup, login, checkout) in a real browser. When one breaks, it writes a report your coding agent can act on: the step that failed, the console errors, the failed requests with the server's response, and a screenshot.
 
+- **Zero setup:** `npx stillworks check http://localhost:3000` opens your app and its key pages and tells you what's broken, in about 30 seconds.
+- **Your real flows:** signup, login and checkout as plain Playwright steps, or ask your agent to write them.
+- **Your agent can run it:** `npx stillworks mcp` is an MCP server for Claude Code, Cursor and any MCP client.
+- **Free and open source,** MIT, no telemetry.
+
 <p align="center">
   <img src="assets/demo.gif" alt="stillworks running three journeys in the terminal: signup fails at step 4 with POST /api/signup returning 500, login and checkout pass" width="760">
 </p>
@@ -17,15 +22,28 @@ Claude Code, Cursor and Codex write code fast. The code compiles, passes lint an
 
 **Want it to run by itself on every PR, with regression diffs?** [Join Publishub early access →](https://getpublishub.com/?utm_source=gh_readme_top#early-access) (free waitlist, coming soon)
 
-## Quickstart (30 seconds)
+## Quickstart
+
+**First look, zero setup (30 seconds):**
+
+```sh
+npx stillworks install                        # one time: downloads Chromium
+npx stillworks check http://localhost:3000    # or your deployed URL
+```
+
+`check` opens your app and its key pages (signup, login, pricing, dashboard first) in a real browser and fails when a page doesn't load, shows a "not found" screen, crashes with a JavaScript error or gets a 5xx from your API. It's read-only: it never fills a form, clicks a button or opens links like "log out", so it's safe on any URL.
+
+**Then check the flows behind those pages:**
 
 ```sh
 npx stillworks init                              # creates journeys.config.ts, adds stillworks, installs Chromium
-# edit the selectors in journeys.config.ts so they match your app
+# edit the journeys so they match your app, or ask your agent to (init prints a prompt you can paste)
 npx stillworks run --url http://localhost:3000   # runs every journey in a real browser
 ```
 
-It exits with code `1` when a journey breaks. Open `verify-report/REPORT.md` and paste it into your agent.
+Both exit with code `1` when something breaks. Open `verify-report/REPORT.md` and paste it into your agent.
+
+> **No terminal?** If you build with Lovable, Bolt or v0, [check your deployed app online, free](https://getpublishub.com/check?utm_source=gh_readme_check): same idea, in your browser, no install.
 
 Works on macOS, Linux and Windows with Node.js 20 or newer.
 
@@ -104,7 +122,7 @@ Tips:
 - Name steps the way you'd describe them to a person. The names end up in the prompt your agent reads.
 - Prefer `getByRole` and `getByLabel` over CSS selectors. They survive refactors, and they break when accessibility does.
 - Every journey starts with fresh cookies. Use a test account for login and test mode for payments, never real ones. Read its password with `env("TEST_PASSWORD")` (exported by `stillworks`) instead of writing it in the file.
-- Ask your agent to write them: *"Read journeys.config.ts and add a journey for inviting a teammate."*
+- Ask your agent to write them. `init` prints a prompt you can paste, or try: *"Read journeys.config.ts and add a journey for inviting a teammate."*
 
 | Option | Default | What it does |
 | --- | --- | --- |
@@ -130,6 +148,17 @@ More in [recipes/](recipes/README.md).
 **Claude Code**
 - `npx stillworks init --claude` adds a `/verify` command: Claude runs the journeys, reads the report, fixes the bug and runs them again.
 - To check automatically every time Claude finishes, add the [Stop hook](integrations/claude-code/README.md). It skips turns where no file changed and never blocks Claude when the app isn't running.
+
+**As an MCP server (Claude Code, Cursor, Windsurf, any MCP client):** your agent gets two tools, `check_app` (zero setup, read-only) and `run_journeys` (your `journeys.config.ts`), and calls them itself after a change.
+
+- Claude Code: `claude mcp add stillworks -- npx -y stillworks mcp`
+- Cursor: add to `.cursor/mcp.json`:
+
+  ```json
+  { "mcpServers": { "stillworks": { "command": "npx", "args": ["-y", "stillworks", "mcp"] } } }
+  ```
+
+Run `npx stillworks install` once first, so the browser is there.
 
 **Cursor:** `npx stillworks init --cursor` adds a [rule](integrations/cursor/rules/stillworks.mdc) that tells the agent to verify after every change.
 
@@ -189,15 +218,18 @@ Two ways in:
 ## CLI
 
 ```
+npx stillworks check <url> [--out <dir>] [--header "name: value"]... [--timeout <ms>] [--channel chrome|msedge] [--headed] [--no-promo]
 npx stillworks init [--claude] [--cursor] [--github] [--skip-install] [--force]
 npx stillworks run [--url <url>] [--config <file>] [--out <dir>] [--journey <name>]...
                    [--header "name: value"]... [--timeout <ms>] [--channel chrome|msedge]
                    [--headed] [--no-promo]
 npx stillworks install [--with-deps]
 npx stillworks hook claude-code
+npx stillworks mcp
 ```
 
-- **Exit codes:** `0` every journey passed · `1` a journey failed · `2` setup problem (no config, app not reachable, unknown journey).
+- **Exit codes:** `0` every journey (or page) passed · `1` one failed · `2` setup problem (no config, app not reachable, unknown journey).
+- **`check`** needs no config. It opens the URL plus up to 6 pages linked from it, and runs four read-only steps on each: open the page, see it isn't an error screen, no JavaScript crash, no 5xx from your app.
 - **`--channel`** uses a Chrome or Edge you already have instead of downloading Chromium.
 - **`--header`** sends a header to your app's origin only, never to third parties. Use it for things like `x-vercel-protection-bypass`.
 
@@ -220,9 +252,13 @@ node dist/cli.js run --url http://127.0.0.1:4173 --config templates/journeys.con
 
 Signup fails at step 4 and login and checkout pass. Stop the app, run `npm run demo` instead, and all three pass.
 
+To see `check` catch a missing page, a JavaScript crash and a 500 with no setup: `node examples/demo-app/server.mjs --break=pages`, then `node dist/cli.js check http://127.0.0.1:4173`.
+
 ## Contributing
 
 Bug reports, journey templates for common stacks (Next.js + Supabase auth, Clerk, Stripe Checkout…) and integrations for more agents are all welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). Want a journey you don't know how to write? [Open a journey request](https://github.com/valmirjunior2109-spec/stillworks/issues/new?template=journey_request.yml).
+
+If stillworks caught a bug for you, a ⭐ on the repo helps other people building with AI find it.
 
 ## License
 

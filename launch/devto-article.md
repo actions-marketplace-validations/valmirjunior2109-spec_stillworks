@@ -32,6 +32,9 @@ What I wanted was simple:
 So I built [stillworks](https://github.com/valmirjunior2109-spec/stillworks), an open-source CLI on top of Playwright.
 
 ```sh
+npx stillworks install                           # one time: Chromium
+npx stillworks check http://localhost:3000       # zero setup, read-only first look
+
 npx stillworks init                              # writes journeys.config.ts, installs Chromium
 npx stillworks run --url http://localhost:3000
 ```
