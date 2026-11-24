@@ -5,6 +5,7 @@
 [![npm](https://img.shields.io/npm/v/stillworks?color=9147ff&label=npm)](https://www.npmjs.com/package/stillworks)
 [![license: MIT](https://img.shields.io/badge/license-MIT-9147ff)](LICENSE)
 [![CI](https://github.com/valmirjunior2109-spec/stillworks/actions/workflows/ci.yml/badge.svg)](https://github.com/valmirjunior2109-spec/stillworks/actions/workflows/ci.yml)
+[![stillworks MCP server](https://glama.ai/mcp/servers/valmirjunior2109-spec/stillworks/badges/score.svg)](https://glama.ai/mcp/servers/valmirjunior2109-spec/stillworks)
 
 Claude Code, Cursor and Codex write code fast. The code compiles, passes lint and tests, and signup is still broken, often in a file the agent wasn't supposed to touch.
 
