@@ -1,5 +1,6 @@
 import type { Page } from "playwright";
 import { UsageError } from "./config.js";
+import { guardContext } from "./netguard.js";
 import type { Config, Journey, Step } from "./config.js";
 
 /**
@@ -151,7 +152,7 @@ export function smokeConfig(startPath: string, extraPaths: string[], timeout?: n
  */
 export async function discover(
   url: string,
-  options: { channel?: string; headed?: boolean; headers?: Record<string, string>; timeout?: number },
+  options: { channel?: string; headed?: boolean; headers?: Record<string, string>; timeout?: number; blockPrivateNetwork?: boolean },
 ): Promise<{ finalURL: URL; links: FoundLink[] }> {
   const { chromium } = await import("playwright");
   let browser;
@@ -179,6 +180,7 @@ export async function discover(
         return same ? route.continue({ headers: { ...request.headers(), ...headers } }) : route.continue();
       });
     }
+    if (options.blockPrivateNetwork) await guardContext(context);
     const page = await context.newPage();
     await page.goto(url, { waitUntil: "load", timeout: (options.timeout ?? 10_000) * 3 }).catch(() => undefined);
     await page.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => {});

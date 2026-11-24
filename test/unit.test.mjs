@@ -231,3 +231,16 @@ test("init suggests a prompt so the agent writes the journeys", () => {
   assert.match(text, /Read journeys\.config\.ts and my app's routes/);
   assert.match(text, /npx stillworks check/);
 });
+
+test("hosted mode: private, loopback, link-local and mapped addresses are never public", async () => {
+  const { isPrivateAddress, isPublicHost } = await import("../dist/netguard.js");
+  for (const ip of ["127.0.0.1", "10.1.2.3", "172.16.0.1", "172.31.255.255", "192.168.1.1", "169.254.169.254", "100.64.0.1", "0.0.0.0", "224.0.0.1", "::1", "::", "fc00::1", "fd12::1", "fe80::1", "::ffff:127.0.0.1", "::ffff:7f00:1", "::ffff:a9fe:a9fe", "64:ff9b::10.0.0.1", "not-an-ip"]) {
+    assert.equal(isPrivateAddress(ip), true, ip);
+  }
+  for (const ip of ["8.8.8.8", "1.1.1.1", "172.32.0.1", "104.18.1.1", "2606:4700:4700::1111", "::ffff:8.8.8.8"]) {
+    assert.equal(isPrivateAddress(ip), false, ip);
+  }
+  for (const host of ["localhost", "app.localhost", "metadata.google.internal", "printer.local", "127.0.0.1", "[::1]"]) {
+    assert.equal(await isPublicHost(host), false, host);
+  }
+});
