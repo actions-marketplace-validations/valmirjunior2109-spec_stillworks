@@ -2,7 +2,7 @@
 
 All notable changes to stillworks. Versions follow [semver](https://semver.org/); every version is on [npm](https://www.npmjs.com/package/stillworks).
 
-## 0.1.7 (2026-11-25)
+## 0.1.7 (2026-11-24)
 
 ### Added
 
