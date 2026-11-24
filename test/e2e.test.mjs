@@ -41,9 +41,19 @@ before(async () => {
   project = mkdtempSync(join(tmpdir(), "stillworks-e2e-"));
 });
 
-after(() => {
-  for (const server of servers) server.kill();
-  rmSync(project, { recursive: true, force: true });
+after(async () => {
+  // Windows keeps a folder locked while a process started in it is still exiting: wait for every one first
+  await Promise.all(
+    servers.map((server) =>
+      server.exitCode !== null || server.signalCode !== null
+        ? undefined
+        : new Promise((resolve) => {
+            server.once("exit", resolve);
+            server.kill();
+          }),
+    ),
+  );
+  rmSync(project, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 });
 
 test("init creates the example config and ignores the report folder", async () => {
