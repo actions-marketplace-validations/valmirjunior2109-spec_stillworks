@@ -240,3 +240,72 @@ test("mcp: an agent lists the tools and runs check_app over stdio", async () => 
     child.kill();
   }
 });
+
+/** Starts `stillworks mcp --http` on a free port and returns a JSON-RPC poster for it. */
+async function startHttpMcp(args = [], env = {}) {
+  const child = spawn(process.execPath, [CLI, "mcp", "--http", "--port", "0", ...args], { cwd: project, env: { ...process.env, NO_COLOR: "1", ...env } });
+  servers.push(child);
+  const base = await new Promise((resolve, reject) => {
+    child.stderr.on("data", (chunk) => {
+      const match = String(chunk).match(/listening on (http:\/\/\S+)\/mcp/);
+      if (match) resolve(match[1].replace("0.0.0.0", "127.0.0.1"));
+    });
+    child.on("exit", (code) => reject(new Error(`mcp --http exited with ${code}`)));
+  });
+  const post = async (message, headers = {}) => {
+    const response = await fetch(`${base}/mcp`, {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json, text/event-stream", ...headers },
+      body: JSON.stringify(message),
+    });
+    const text = await response.text();
+    return { status: response.status, headers: response.headers, body: text ? JSON.parse(text) : null };
+  };
+  return { base, post, child };
+}
+
+const INIT = { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "test", version: "1" } } };
+
+test("mcp --http: the same tools over Streamable HTTP, and websites can't drive a local server", async () => {
+  const { base, post, child } = await startHttpMcp();
+  try {
+    const init = await post(INIT);
+    assert.equal(init.status, 200);
+    assert.equal(init.body.result.serverInfo.name, "stillworks");
+    assert.ok(init.headers.get("mcp-session-id"));
+    assert.equal((await post({ jsonrpc: "2.0", method: "notifications/initialized" })).status, 202);
+    assert.deepEqual((await post({ jsonrpc: "2.0", id: 2, method: "tools/list" })).body.result.tools.map((t) => t.name), ["check_app", "run_journeys"]);
+    const check = (await post({ jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "check_app", arguments: { url: brokenPages } } })).body.result;
+    assert.ok(!check.isError);
+    assert.match(check.content[0].text, /3 of 6 pages failed/);
+    assert.equal((await fetch(`${base}/mcp`)).status, 405);
+    assert.equal((await fetch(`${base}/health`)).status, 200);
+    assert.equal((await post(INIT, { origin: "https://evil.example" })).status, 403);
+    assert.equal((await post(INIT, { origin: "http://localhost:5173" })).status, 200);
+    assert.equal((await post([INIT])).status, 400);
+  } finally {
+    child.kill();
+  }
+});
+
+test("mcp --http --hosted: check_app only, never localhost or a private network, token when set", async () => {
+  const { post, child } = await startHttpMcp(["--hosted", "--host", "127.0.0.1"], { STILLWORKS_MCP_TOKEN: "s3cret" });
+  const auth = { authorization: "Bearer s3cret" };
+  try {
+    assert.equal((await post(INIT)).status, 401);
+    assert.equal((await post(INIT, { authorization: "Bearer wrong!" })).status, 401);
+    const init = await post(INIT, { ...auth, origin: "https://lovable.dev" });
+    assert.equal(init.status, 200);
+    assert.equal(init.headers.get("access-control-allow-origin"), "*");
+    assert.deepEqual((await post({ jsonrpc: "2.0", id: 2, method: "tools/list" }, auth)).body.result.tools.map((t) => t.name), ["check_app"]);
+    for (const url of [healthy, "http://169.254.169.254/latest/meta-data", "http://10.0.0.1", "http://[::1]:3000", "file:///etc/passwd"]) {
+      const result = (await post({ jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "check_app", arguments: { url } } }, auth)).body.result;
+      assert.equal(result.isError, true, url);
+      assert.match(result.content[0].text, /isn't a public address|Only http and https/, url);
+    }
+    const journeys = (await post({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "run_journeys", arguments: {} } }, auth)).body;
+    assert.equal(journeys.error.code, -32602);
+  } finally {
+    child.kill();
+  }
+});

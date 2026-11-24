@@ -1,6 +1,7 @@
 import { mkdirSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { Browser, Page } from "playwright";
+import { guardContext } from "./netguard.js";
 import { UsageError, type Config, type Journey } from "./config.js";
 
 export interface FailedRequest {
@@ -56,6 +57,8 @@ export interface RunOptions {
   channel?: string;
   /** Merged over config.headers. */
   headers?: Record<string, string>;
+  /** Abort every request to localhost or a private network (hosted mode: the URL comes from a stranger). */
+  blockPrivateNetwork?: boolean;
   onJourneyStart?: (journey: Journey) => void;
   onJourneyEnd?: (result: JourneyResult) => void;
 }
@@ -145,6 +148,7 @@ async function runJourney(browser: Browser, journey: Journey, config: Config, op
       return route.continue();
     });
   }
+  if (options.blockPrivateNetwork) await guardContext(context);
   const page = await context.newPage();
   page.setDefaultTimeout(timeout);
   page.setDefaultNavigationTimeout(timeout * 3);

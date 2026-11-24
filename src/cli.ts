@@ -10,6 +10,7 @@ import { CLI_PROMO, INIT_PROMO, shouldShowPromo } from "./promo.js";
 import { looksLikeJourneyProblem, toReportPath, writeReport } from "./report.js";
 import { runJourneys, type JourneyResult } from "./runner.js";
 import { serveMcp } from "./mcp.js";
+import { serveMcpHttp } from "./mcp-http.js";
 import { MAX_EXTRA_PAGES, discover, pickPages, smokeConfig } from "./smoke.js";
 import { INTEGRATIONS, PACKAGE_ROOT, init, installBrowser, nextSteps, type Integration } from "./setup.js";
 
@@ -22,6 +23,7 @@ Usage
   npx stillworks install [--with-deps]                   install (or update) Chromium
   npx stillworks hook claude-code                        for a Claude Code Stop hook (see README)
   npx stillworks mcp                                     an MCP server: your agent calls check_app / run_journeys itself
+  npx stillworks mcp --http [--port 8787]                the same server over HTTP, for clients that connect to a URL
 
 Options for run
   -u, --url <url>         the app to check (or STILLWORKS_URL, or baseURL in the config)
@@ -43,6 +45,15 @@ Options for init
       --skip-install               don't install anything (the stillworks package or Chromium)
       --force                      overwrite files that already exist
       --no-promo                   hide the one-line Publishub note (or NO_PUBLISHUB_PROMO=1)
+
+Options for mcp --http
+      --port <n>          default: $PORT or 8787
+      --host <addr>       default: 127.0.0.1 (0.0.0.0 with --hosted)
+      --hosted            a public server (Lovable, Bolt, Replit…): check_app only, public URLs only,
+                          private networks blocked, a rate limit per client
+      --trust-proxy       read the client address from X-Forwarded-For (behind Fly, Render, Railway…)
+  STILLWORKS_MCP_TOKEN    require "Authorization: Bearer <token>"
+  STILLWORKS_RATE_LIMIT   checks per client per hour with --hosted (default 20)
 
 Exit codes: 0 every journey passed · 1 a journey failed · 2 usage or setup problem`;
 
@@ -73,6 +84,11 @@ async function main(argv: string[]): Promise<number> {
       "skip-install": { type: "boolean" },
       force: { type: "boolean" },
       "with-deps": { type: "boolean" },
+      http: { type: "boolean" },
+      hosted: { type: "boolean" },
+      port: { type: "string" },
+      host: { type: "string" },
+      "trust-proxy": { type: "boolean" },
       help: { type: "boolean", short: "h" },
       version: { type: "boolean", short: "v" },
     },
@@ -96,7 +112,23 @@ async function main(argv: string[]): Promise<number> {
     return 0;
   }
 
-  if (command === "mcp") return serveMcp();
+  if (command === "mcp") {
+    if (!values.http) {
+      if (values.hosted) throw new UsageError("--hosted only works with --http: npx stillworks mcp --http --hosted");
+      return serveMcp();
+    }
+    const port = Number(values.port ?? process.env.PORT ?? 8787);
+    if (!Number.isInteger(port) || port < 0 || port > 65535) throw new UsageError(`--port needs a number from 0 to 65535, got "${values.port}".`);
+    const rateLimit = Number(process.env.STILLWORKS_RATE_LIMIT ?? 20);
+    return serveMcpHttp({
+      port,
+      host: values.host ?? (values.hosted ? "0.0.0.0" : "127.0.0.1"),
+      hosted: values.hosted,
+      trustProxy: values["trust-proxy"],
+      rateLimit: Number.isFinite(rateLimit) && rateLimit > 0 ? rateLimit : 20,
+      token: process.env.STILLWORKS_MCP_TOKEN?.trim() || undefined,
+    });
+  }
 
   if (command === "install") {
     await installBrowser({ withDeps: values["with-deps"] });
