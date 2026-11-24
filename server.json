@@ -6,12 +6,12 @@
     "url": "https://github.com/valmirjunior2109-spec/stillworks",
     "source": "github"
   },
-  "version": "0.1.5",
+  "version": "0.1.6",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "stillworks",
-      "version": "0.1.5",
+      "version": "0.1.6",
       "runtimeHint": "npx",
       "packageArguments": [
         {
