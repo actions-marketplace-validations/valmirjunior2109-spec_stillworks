@@ -1,6 +1,6 @@
 {
   "name": "stillworks",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "mcpName": "io.github.valmirjunior2109-spec/stillworks",
   "description": "Your AI writes the code. This checks it still works. Run your critical user journeys (signup, login, checkout) in a real browser and get a bug report your coding agent can fix.",
   "keywords": [
