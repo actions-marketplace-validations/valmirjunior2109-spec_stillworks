@@ -7,6 +7,9 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  # Re-run a release that stopped halfway (for example, a GitHub outage at the registry step): Actions → Release →
+  # Run workflow, on the tag. Steps already done (the version is on npm) are skipped.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -23,11 +26,19 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
       - name: Check the tag matches package.json
+        if: github.ref_type == 'tag'
         run: test "v$(node -p 'require("./package.json").version')" = "$GITHUB_REF_NAME"
       - run: npm install -g npm@latest
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm publish --access public
+      - name: Publish to npm (skipped when this version is already there)
+        run: |
+          v=$(node -p 'require("./package.json").version')
+          if npm view "stillworks@$v" version >/dev/null 2>&1; then
+            echo "stillworks@$v is already on npm"
+          else
+            npm publish --access public
+          fi
       # Official MCP Registry (io.github.valmirjunior2109-spec/stillworks). Logs in with this workflow's
       # GitHub OIDC token, so no secret is stored. The registry checks that the npm package's "mcpName"
       # matches server.json, so wait until the version just published is visible on npm.
@@ -45,5 +56,12 @@ jobs:
           test "$(node -p 'require("./server.json").packages[0].version')" = "$v"
       - name: Install mcp-publisher
         run: curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
-      - run: ./mcp-publisher login github-oidc
+      # GitHub's OIDC endpoint sometimes answers 503: try a few times before giving up
+      - name: Log in to the MCP Registry
+        run: |
+          for i in 1 2 3 4 5; do
+            ./mcp-publisher login github-oidc && exit 0
+            sleep $((i * 15))
+          done
+          exit 1
       - run: ./mcp-publisher publish

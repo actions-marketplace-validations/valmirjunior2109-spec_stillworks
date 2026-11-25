@@ -5,6 +5,7 @@
 [![npm](https://img.shields.io/npm/v/stillworks?color=9147ff&label=npm)](https://www.npmjs.com/package/stillworks)
 [![license: MIT](https://img.shields.io/badge/license-MIT-9147ff)](LICENSE)
 [![CI](https://github.com/valmirjunior2109-spec/stillworks/actions/workflows/ci.yml/badge.svg)](https://github.com/valmirjunior2109-spec/stillworks/actions/workflows/ci.yml)
+[![stillworks MCP server](https://glama.ai/mcp/servers/valmirjunior2109-spec/stillworks/badges/score.svg)](https://glama.ai/mcp/servers/valmirjunior2109-spec/stillworks)
 
 Claude Code, Cursor and Codex write code fast. The code compiles, passes lint and tests, and signup is still broken, often in a file the agent wasn't supposed to touch.
 
@@ -149,14 +150,17 @@ More in [recipes/](recipes/README.md).
 - `npx stillworks init --claude` adds a `/verify` command: Claude runs the journeys, reads the report, fixes the bug and runs them again.
 - To check automatically every time Claude finishes, add the [Stop hook](integrations/claude-code/README.md). It skips turns where no file changed and never blocks Claude when the app isn't running.
 
-**As an MCP server (Claude Code, Cursor, Windsurf, any MCP client):** your agent gets two tools, `check_app` (zero setup, read-only) and `run_journeys` (your `journeys.config.ts`), and calls them itself after a change.
+**As an MCP server (Claude Code, Cursor, VS Code, Windsurf, Codex, Lovable, Bolt, Replit…):** your agent gets two tools, `check_app` (zero setup, read-only) and `run_journeys` (your `journeys.config.ts`), and calls them itself after a change.
 
 - Claude Code: `claude mcp add stillworks -- npx -y stillworks mcp`
-- Cursor: add to `.cursor/mcp.json`:
+- Cursor: [one-click install](cursor://anysphere.cursor-deeplink/mcp/install?name=stillworks&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsInN0aWxsd29ya3MiLCJtY3AiXX0=), or add to `.cursor/mcp.json`:
 
   ```json
   { "mcpServers": { "stillworks": { "command": "npx", "args": ["-y", "stillworks", "mcp"] } } }
   ```
+
+- VS Code, Windsurf, Codex, Claude Desktop, Gemini CLI: [setup for each one](integrations/README.md#on-your-machine).
+- **Lovable, Bolt, Replit, claude.ai, ChatGPT** run in the cloud and connect to a URL instead: `npx stillworks mcp --http --hosted` serves `check_app` for public URLs, with private networks blocked. [Deploy it with the Dockerfile](integrations/README.md#hosting-the-server) and [connect each tool](integrations/README.md#in-the-cloud-lovable-bolt-replit-claudeai-chatgpt).
 
 Run `npx stillworks install` once first, so the browser is there.
 

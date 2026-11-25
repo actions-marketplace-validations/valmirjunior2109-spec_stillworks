@@ -2,6 +2,16 @@
 
 All notable changes to stillworks. Versions follow [semver](https://semver.org/); every version is on [npm](https://www.npmjs.com/package/stillworks).
 
+## 0.1.7 (2026-11-24)
+
+### Added
+
+- **`npx stillworks mcp --http`: the MCP server over Streamable HTTP** (`POST /mcp`), for clients that connect to a URL. Stateless, one tool call at a time; `GET /health` for hosts. Listens on 127.0.0.1 by default and refuses requests from web pages that aren't on localhost.
+- **`--hosted`: a public server for cloud builders** (Lovable, Bolt, Replit) and remote connectors (claude.ai, ChatGPT). `check_app` only, public URLs only: localhost, private networks, link-local and cloud metadata addresses are refused, and the browser is blocked from requesting them while it checks. Each check runs in a temporary folder deleted afterwards; screenshots of failed pages come back as MCP images. 20 checks per client per hour (`STILLWORKS_RATE_LIMIT`), optional bearer token (`STILLWORKS_MCP_TOKEN`), `--trust-proxy` for `X-Forwarded-For`.
+- `Dockerfile` and `fly.toml` for the hosted server.
+- [`integrations/README.md`](integrations/README.md): setup for Claude Code, Cursor (one-click link), VS Code, Windsurf, Codex, Claude Desktop, Gemini CLI, and the cloud builders.
+- Tool annotations (`readOnlyHint` on `check_app`) and a `title` in `serverInfo`.
+
 ## 0.1.6 (2026-11-24)
 
 ### Added

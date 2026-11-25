@@ -1,0 +1,13 @@
+node_modules
+dist
+verify-report
+.git
+.github
+examples
+test
+launch
+assets
+recipes
+scripts
+*.md
+!integrations/**/*.md
